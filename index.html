@@ -1,0 +1,20 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="index.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel to Json Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <script src="xlsx.full.min.js"></script>
+</head>
+<body>
+    <p id="para" ">Click on Choose a file button to Upload Your Excel File</p>
+    
+        <input type="file" id="excelFile" accept=".xlsx ,.xls"><br><br>
+        <button onclick="convertExcelToJson()" id="btn1">Convert Excel ➡️ Json</button>
+
+        <div id="jsonOutput"></div>
+
+    <script src="converter.js"></script>
+</body>
+</html>

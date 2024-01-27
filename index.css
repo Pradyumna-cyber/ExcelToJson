@@ -1,0 +1,38 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    text-align: center;
+}
+
+input {
+    margin-bottom: 10px;
+    display: block;
+    margin: auto;
+    width: 80%;
+    padding: 10px;
+    font-size: 16px;
+}
+
+#para {
+    color: rgb(0, 18, 99);
+    font-size: 30px;
+    text-align: center;
+}
+
+#excelFile {
+    display: block;
+    margin: auto;
+    width: 80%;
+    padding: 10px;
+    font-size: 16px;
+}
+
+#btn1 {
+    color: white;
+    background-color: rgb(46, 60, 121);
+    display: block;
+    margin: auto;
+    width: 20%;
+    padding: 10px;
+    font-size: 16px;
+}
