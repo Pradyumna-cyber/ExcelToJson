@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel to JSON Converter</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    padding: 20px;
+  }
+  #container {
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  #file-input {
+    margin-bottom: 10px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+  button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px; /* Add spacing between Convert button and Download link */
+    background-color: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  button:hover {
+    background-color: #45a049;
+  }
+  a {
+    display: none;
+    text-align: center;
+    font-size: 16px;
+    color: #fff;
+    background-color: #2196F3;
+    padding: 10px;
+    border-radius: 4px;
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+  <div id="container">
+    <h1>Excel to JSON Converter</h1>
+    <input type="file" id="file-input" accept=".xlsx, .xls">
+    <button onclick="convertToJSON()">Convert to JSON</button>
+    <a id="download-link">Download JSON</a>
+    <pre id="json-output"></pre>
+  </div>
+  <Script src="json-data.js"></Script>
+  <script>
+    // Function to handle the fetched JSON data
+  //  console.log(mainJson);
+
+    // Function to fetch and run the JSON file
+    function runJSONFile() {
+        fetch('/data.json') // Change 'data.json' to the path of your JSON file
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                handleJSONData(data); // Call the function to handle the JSON data
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+    }
+    
+    // console.log(additionalFile);
+    // Call the function to run the JSON file
+    // Initialize an object to store department IDs for each department name
+    let departmentIds = {};
+    // Initialize an object to store appname IDs for each appname value
+    let appnameIds = {};
+    
+    function convertToJSON() {
+      const fileInput = document.getElementById('file-input');
+      const jsonOutput = document.getElementById('json-output');
+      const downloadLink = document.getElementById('download-link');
+  
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Please select a file.');
+        return;
+      }
+  
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const data = event.target.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+  
+        const headers = jsonData.shift(); // Remove headers from data
+  
+        const columnData = {
+          departments: [], // Initialize array for departments
+          equipments: [], // Initialize array for equipments
+          appnames: [] // Initialize array for appnames
+        };
+  
+        // Initialize object for additional columns
+        const additionalColumns = {};
+  
+        // Populate departments
+        for (let i = 0; i < headers.length; i++) {
+          const columnName = headers[i];
+          if (columnName === "Department") {
+            // Loop through each unique department to populate departments
+            const uniqueDepartments = new Set(jsonData.map(row => row[i]));
+            uniqueDepartments.forEach((departmentName, index) => {
+              if (departmentName) { // Check if departmentName is not empty or undefined
+                const department = {
+                  id: "deptid" + (index + 1),
+                  name: departmentName
+                };
+                columnData.departments.push(department);
+              }
+            });
+            break;
+          }
+        }
+  
+        // Populate appnames
+        for (let i = 0; i < headers.length; i++) {
+          const columnName = headers[i];
+          if (columnName === "Application Name") {
+            const uniqueAppnames = new Set(jsonData.map(row => row[i]));
+            uniqueAppnames.forEach((appName, index) => {
+              if (appName) { // Check if appName is not empty or undefined
+                const appname = {
+                  id: "appid" + (index + 1),
+                  name: appName
+                };
+                columnData.appnames.push(appname);
+              }
+            });
+            break;
+          }
+        }
+  
+for (let i = 0; i < headers.length; i++) {
+  const columnName = headers[i];
+  if (columnName === "Equipment Name") {
+    jsonData.forEach((row, index) => {
+      const departmentName = row[headers.indexOf("Department")];
+      if (departmentName !== undefined) { // Check if departmentName is not undefined
+        const department = columnData.departments.find(dep => dep.name === departmentName);
+        const depId = department ? department.id : null; // Check if department exists
+
+        // Get the value from the "Location" column
+        let locationValue = row[headers.indexOf("Location")];
+        locationValue = locationValue !== undefined && locationValue !== "" ? locationValue : ""; // Set location to value from row if present, otherwise ""
+
+        // Get the value from the "Type" column
+        let typeValue = row[headers.indexOf("Type")];
+        typeValue = typeValue !== undefined && typeValue !== "" ? typeValue : ""; // Set type to value from row if present, otherwise ""
+
+        // Construct the equipment object
+        const equipment = {
+          "eq_id": "equip" + (index + 1), // eq_id comes first
+          "id":  row[headers.indexOf("Equipment ID")],
+          "name": row[i],
+          "location": locationValue, // Set location to value from row if present, otherwise ""
+          "type": typeValue, // Set type to value from row if present, otherwise ""
+          "depId": depId
+        };
+        columnData.equipments.push(equipment);
+      }
+    });
+    break;
+  }
+}
+
+
+  
+        // Populate additional columns dynamically
+        // Populate additional columns dynamically
+headers.forEach((columnName, index) => {
+  if (columnName !== "Sr.\nNo." && columnName !== "Department" && columnName !== "Equipment Name" && columnName !== "Application Name" && columnName !== "Equipment ID" && columnName !== "Location") {
+    const columnValues = jsonData.map(row => row[index]);
+    const formattedColumnName = columnName.replace(/\s+/g, "_").toLowerCase();
+    const columnId = "col" + (index + 1); // Assign an ID for the column
+    additionalColumns[formattedColumnName] = columnValues.filter(value => value !== undefined).map((value, i) => ({ id: columnId + (i + 1), name: value })); // Assign ID and store value in name
+  }
+});
+
+  const additionalFiled=mainJson
+        // Merge additional columns into columnData
+        Object.assign(columnData, additionalFiled);
+
+        // Display the column data
+        jsonOutput.textContent = JSON.stringify(columnData, null, 2);
+  
+        // Set up download link for the JSON file
+        const jsonBlob = new Blob([JSON.stringify(columnData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(jsonBlob);
+        downloadLink.href = url;
+        downloadLink.download = 'data.json';
+        downloadLink.style.display = 'block';
+      };
+  
+      // Error handling for file reading
+      reader.onerror = function (event) {
+        console.error("File could not be read! Code " + event.target.error.code);
+      };
+  
+      // Read the file as binary string
+      reader.readAsBinaryString(file);
+    }
+    
+  </script>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
+</body>
+</html>
