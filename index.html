@@ -55,6 +55,16 @@
     border-radius: 4px;
     text-decoration: none;
   }
+  textarea {
+    width: 100%;
+    height: 300px; /* Adjust the height as needed */
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    resize: vertical; /* Allow vertical resizing */
+  }
 </style>
 </head>
 <body>
@@ -63,7 +73,8 @@
     <input type="file" id="file-input" accept=".xlsx, .xls">
     <button onclick="convertToJSON()">Convert to JSON</button>
     <a id="download-link">Download JSON</a>
-    <pre id="json-output"></pre>
+    <textarea id="json-output" contenteditable="true"></textarea>
+    <button onclick="saveChanges()">Save Changes and Download JSON</button>
   </div>
   <Script src="json-data.js"></Script>
   <script>
@@ -212,7 +223,7 @@ headers.forEach((columnName, index) => {
         Object.assign(columnData, additionalFiled);
 
         // Display the column data
-        jsonOutput.textContent = JSON.stringify(columnData, null, 2);
+        jsonOutput.value = JSON.stringify(columnData, null, 2); // Change textContent to value
   
         // Set up download link for the JSON file
         const jsonBlob = new Blob([JSON.stringify(columnData, null, 2)], { type: 'application/json' });
@@ -231,6 +242,19 @@ headers.forEach((columnName, index) => {
       reader.readAsBinaryString(file);
     }
     
+    // Function to save changes made to JSON data
+    function saveChanges() {
+      const jsonOutput = document.getElementById('json-output');
+      const jsonData = jsonOutput.value;
+      const jsonBlob = new Blob([jsonData], { type: 'application/json' });
+      const url = URL.createObjectURL(jsonBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'edited_data.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   </script>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
