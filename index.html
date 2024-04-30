@@ -55,6 +55,11 @@
     border-radius: 4px;
     text-decoration: none;
   }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: auto;
+  }
   textarea {
     width: 100%;
     height: 300px; /* Adjust the height as needed */
@@ -73,13 +78,23 @@
     <input type="file" id="file-input" accept=".xlsx, .xls">
     <button onclick="convertToJSON()">Convert to JSON</button>
     <a id="download-link">Download JSON</a>
-    <textarea id="json-output" contenteditable="true"></textarea>
-    <button onclick="saveChanges()">Save Changes and Download JSON</button>
+    <!-- Section for displaying converted JSON -->
+    <div id="display-section" style="display: none;">
+      <h2>Converted JSON</h2>
+      <button id="edit-json" onclick="editJSON()">Edit JSON</button>
+      <pre id="json-output"></pre>
+    </div>
+    <!-- Section for editing JSON -->
+    <div id="edit-section" style="display: none;">
+      <h2>Edit JSON</h2>
+      <textarea id="json-edit" rows="10"></textarea>
+      <button onclick="saveChanges()">Save Changes and Download JSON</button>
+    </div>
   </div>
   <Script src="json-data.js"></Script>
   <script>
     // Function to handle the fetched JSON data
-  //  console.log(mainJson);
+    // console.log(mainJson);
 
     // Function to fetch and run the JSON file
     function runJSONFile() {
@@ -172,58 +187,56 @@
           }
         }
   
-for (let i = 0; i < headers.length; i++) {
-  const columnName = headers[i];
-  if (columnName === "Equipment Name") {
-    jsonData.forEach((row, index) => {
-      const departmentName = row[headers.indexOf("Department")];
-      if (departmentName !== undefined) { // Check if departmentName is not undefined
-        const department = columnData.departments.find(dep => dep.name === departmentName);
-        const depId = department ? department.id : null; // Check if department exists
-
-        // Get the value from the "Location" column
-        let locationValue = row[headers.indexOf("Location")];
-        locationValue = locationValue !== undefined && locationValue !== "" ? locationValue : ""; // Set location to value from row if present, otherwise ""
-
-        // Get the value from the "Type" column
-        let typeValue = row[headers.indexOf("Type")];
-        typeValue = typeValue !== undefined && typeValue !== "" ? typeValue : ""; // Set type to value from row if present, otherwise ""
-
-        // Construct the equipment object
-        const equipment = {
-          "eq_id": "equip" + (index + 1), // eq_id comes first
-          "id":  row[headers.indexOf("Equipment ID")],
-          "name": row[i],
-          "location": locationValue, // Set location to value from row if present, otherwise ""
-          "type": typeValue, // Set type to value from row if present, otherwise ""
-          "depId": depId
-        };
-        columnData.equipments.push(equipment);
-      }
-    });
-    break;
-  }
-}
-
-
+        for (let i = 0; i < headers.length; i++) {
+          const columnName = headers[i];
+          if (columnName === "Equipment Name") {
+            jsonData.forEach((row, index) => {
+              const departmentName = row[headers.indexOf("Department")];
+              if (departmentName !== undefined) { // Check if departmentName is not undefined
+                const department = columnData.departments.find(dep => dep.name === departmentName);
+                const depId = department ? department.id : null; // Check if department exists
+  
+                // Get the value from the "Location" column
+                let locationValue = row[headers.indexOf("Location")];
+                locationValue = locationValue !== undefined && locationValue !== "" ? locationValue : ""; // Set location to value from row if present, otherwise ""
+  
+                // Get the value from the "Type" column
+                let typeValue = row[headers.indexOf("Type")];
+                typeValue = typeValue !== undefined && typeValue !== "" ? typeValue : ""; // Set type to value from row if present, otherwise ""
+  
+                // Construct the equipment object
+                const equipment = {
+                  "eq_id": "equip" + (index + 1), // eq_id comes first
+                  "id":  row[headers.indexOf("Equipment ID")],
+                  "name": row[i],
+                  "location": locationValue, // Set location to value from row if present, otherwise ""
+                  "type": typeValue, // Set type to value from row if present, otherwise ""
+                  "depId": depId
+                };
+                columnData.equipments.push(equipment);
+              }
+            });
+            break;
+          }
+        }
   
         // Populate additional columns dynamically
-        // Populate additional columns dynamically
-headers.forEach((columnName, index) => {
-  if (columnName !== "Sr.\nNo." && columnName !== "Department" && columnName !== "Equipment Name" && columnName !== "Application Name" && columnName !== "Equipment ID" && columnName !== "Location") {
-    const columnValues = jsonData.map(row => row[index]);
-    const formattedColumnName = columnName.replace(/\s+/g, "_").toLowerCase();
-    const columnId = "col" + (index + 1); // Assign an ID for the column
-    additionalColumns[formattedColumnName] = columnValues.filter(value => value !== undefined).map((value, i) => ({ id: columnId + (i + 1), name: value })); // Assign ID and store value in name
-  }
-});
-
-  const additionalFiled=mainJson
+        headers.forEach((columnName, index) => {
+          if (columnName !== "Sr.\nNo." && columnName !== "Department" && columnName !== "Equipment Name" && columnName !== "Application Name" && columnName !== "Equipment ID" && columnName !== "Location") {
+            const columnValues = jsonData.map(row => row[index]);
+            const formattedColumnName = columnName.replace(/\s+/g, "_").toLowerCase();
+            const columnId = "col" + (index + 1); // Assign an ID for the column
+            additionalColumns[formattedColumnName] = columnValues.filter(value => value !== undefined).map((value, i) => ({ id: columnId + (i + 1), name: value })); // Assign ID and store value in name
+          }
+        });
+  
+        const additionalFiled=mainJson;
         // Merge additional columns into columnData
         Object.assign(columnData, additionalFiled);
-
+  
         // Display the column data
-        jsonOutput.value = JSON.stringify(columnData, null, 2); // Change textContent to value
+        jsonOutput.textContent = JSON.stringify(columnData, null, 2); // Change textContent to value
+        document.getElementById('display-section').style.display = 'block';
   
         // Set up download link for the JSON file
         const jsonBlob = new Blob([JSON.stringify(columnData, null, 2)], { type: 'application/json' });
@@ -244,8 +257,8 @@ headers.forEach((columnName, index) => {
     
     // Function to save changes made to JSON data
     function saveChanges() {
-      const jsonOutput = document.getElementById('json-output');
-      const jsonData = jsonOutput.value;
+      const jsonEdit = document.getElementById('json-edit');
+      const jsonData = jsonEdit.value;
       const jsonBlob = new Blob([jsonData], { type: 'application/json' });
       const url = URL.createObjectURL(jsonBlob);
       const a = document.createElement('a');
@@ -254,6 +267,15 @@ headers.forEach((columnName, index) => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+    }
+
+    // Function to switch to edit mode
+    function editJSON() {
+      const jsonData = JSON.parse(document.getElementById('json-output').textContent);
+      const jsonEdit = document.getElementById('json-edit');
+      jsonEdit.value = JSON.stringify(jsonData, null, 2);
+      document.getElementById('display-section').style.display = 'none';
+      document.getElementById('edit-section').style.display = 'block';
     }
   </script>
   
