@@ -22,7 +22,7 @@
     text-align: center;
     margin-bottom: 20px;
   }
-  #file-input {
+  #file-input, #extra-file-input {
     margin-bottom: 10px;
     width: 100%;
     padding: 10px;
@@ -60,6 +60,10 @@
     word-wrap: break-word;
     overflow: auto;
   }
+  #download-link{
+    display: none;
+  }
+
   textarea {
     width: 100%;
     height: 300px; /* Adjust the height as needed */
@@ -70,14 +74,29 @@
     box-sizing: border-box;
     resize: vertical; /* Allow vertical resizing */
   }
+  select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
 </style>
 </head>
 <body>
   <div id="container">
     <h1>Excel to JSON Converter</h1>
+    
     <input type="file" id="file-input" accept=".xlsx, .xls">
     <button onclick="convertToJSON()">Convert to JSON</button>
-    <a id="download-link">Download JSON</a>
+    <button id="download-link" onclick="download()">Download JSON</button>
+    
+    <!-- Additional button to upload extra Excel file -->
+    <h2>Upload Additional Excel File</h2>
+    <input type="file" id="extra-file-input" accept=".xlsx, .xls">
+    <button onclick="uploadExtraFile()">Upload Extra Excel File</button>
+    
     <!-- Section for displaying converted JSON -->
     <div id="display-section" style="display: none;">
       <h2>Converted JSON</h2>
@@ -90,29 +109,14 @@
       <textarea id="json-edit" rows="10"></textarea>
       <button onclick="saveChanges()">Save Changes and Download JSON</button>
     </div>
-  </div>
-  <Script src="json-data.js"></Script>
-  <script>
-    // Function to handle the fetched JSON data
-    // console.log(mainJson);
-
-    // Function to fetch and run the JSON file
-    function runJSONFile() {
-        fetch('/data.json') // Change 'data.json' to the path of your JSON file
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                handleJSONData(data); // Call the function to handle the JSON data
-            })
-            .catch(error => {
-                console.error('There was a problem with the fetch operation:', error);
-            });
-    }
     
+  </div>
+  <script src="json-data.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+  
+  <script>
+
     // console.log(additionalFile);
     // Call the function to run the JSON file
     // Initialize an object to store department IDs for each department name
@@ -238,11 +242,10 @@
         jsonOutput.textContent = JSON.stringify(columnData, null, 2); // Change textContent to value
         document.getElementById('display-section').style.display = 'block';
   
-        // Set up download link for the JSON file
-        const jsonBlob = new Blob([JSON.stringify(columnData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(jsonBlob);
-        downloadLink.href = url;
-        downloadLink.download = 'data.json';
+        // const jsonBlob = new Blob([JSON.stringify(columnData, null, 2)], { type: 'application/json' });
+        // const url = URL.createObjectURL(jsonBlob);
+        // downloadLink.href = url;
+        // downloadLink.download = 'data.json';
         downloadLink.style.display = 'block';
       };
   
@@ -255,30 +258,89 @@
       reader.readAsBinaryString(file);
     }
     
-    // Function to save changes made to JSON data
-    function saveChanges() {
-      const jsonEdit = document.getElementById('json-edit');
-      const jsonData = jsonEdit.value;
-      const jsonBlob = new Blob([jsonData], { type: 'application/json' });
-      const url = URL.createObjectURL(jsonBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'edited_data.json';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+    function uploadExtraFile() {
+      const jsonOutput = document.getElementById('json-output');
+      const jsonText = jsonOutput.textContent;
+      if (!jsonText) {
+        alert('No JSON data available.');
+        return;
+      }
+
+      const parsedJson = JSON.parse(jsonText);
+      console.log(parsedJson);
+      const newFile = document.getElementById('extra-file-input')
+
+      const file = newFile.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+
+                // Assuming the data is in the first sheet
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+
+                // Convert the sheet to JSON
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                const columnsToSkip = ['Sr. No.', 'Area'];
+                // Columns to rename
+                const columnRenameMap = { 'References (21CFR Part 11)': 'reference','Observations':'observation' };
+
+                // Process each row
+                const processedData = jsonData.map(row => {
+                    // Add unique ID and make it the first field
+                    const newRow = { id: uuid.v4() };
+
+                    // Rename columns and remove specified columns
+                    for (const key in row) {
+                        if (!columnsToSkip.includes(key)) {
+                            const newKey = columnRenameMap[key] || key;
+                            newRow[newKey] = row[key];
+                        }
+                    }
+
+                    return newRow;
+                });
+                console.log(processedData);
+                const myJson = {
+                  'observation':processedData
+                }
+                try{
+                  console.log('hey');
+                  console.log(parsedJson['observation']);
+                  parsedJson.observation = myJson.observation;
+                  console.log(parsedJson);
+  
+                jsonOutput.textContent = JSON.stringify(parsedJson,null,2)
+                }
+                catch(error){
+                    alert('json problem')
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+
+
     }
 
-    // Function to switch to edit mode
-    function editJSON() {
-      const jsonData = JSON.parse(document.getElementById('json-output').textContent);
-      const jsonEdit = document.getElementById('json-edit');
-      jsonEdit.value = JSON.stringify(jsonData, null, 2);
-      document.getElementById('display-section').style.display = 'none';
-      document.getElementById('edit-section').style.display = 'block';
+    function download(){
+      var jsonContent = document.getElementById('json-output').textContent;
+
+      // Create a Blob with the JSON content
+      var blob = new Blob([jsonContent], { type: 'application/json' });
+
+      // Create an anchor element and set the href attribute to a URL created from the Blob
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'data.json';
+      // Programmatically click the anchor to trigger the download
+      link.click();
+
+      // Clean up by revoking the object URL
+      URL.revokeObjectURL(link.href);
     }
   </script>
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
-</body>
+</body> 
 </html>
