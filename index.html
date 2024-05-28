@@ -259,71 +259,70 @@
     }
     
     function uploadExtraFile() {
-      const jsonOutput = document.getElementById('json-output');
-      const jsonText = jsonOutput.textContent;
-      if (!jsonText) {
+    const jsonOutput = document.getElementById('json-output');
+    const jsonText = jsonOutput.textContent;
+    if (!jsonText) {
         alert('No JSON data available.');
         return;
-      }
-
-      const parsedJson = JSON.parse(jsonText);
-      console.log(parsedJson);
-      const newFile = document.getElementById('extra-file-input')
-
-      const file = newFile.files[0];
-            const reader = new FileReader();
-
-            reader.onload = function(event) {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-
-                // Assuming the data is in the first sheet
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-
-                // Convert the sheet to JSON
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-                const columnsToSkip = ['Sr. No.', 'Area'];
-                // Columns to rename
-                const columnRenameMap = { 'References (21CFR Part 11)': 'reference','Observations':'observation' };
-
-                // Process each row
-                const processedData = jsonData.map(row => {
-                    // Add unique ID and make it the first field
-                    const newRow = { id: uuid.v4() };
-
-                    // Rename columns and remove specified columns
-                    for (const key in row) {
-                        if (!columnsToSkip.includes(key)) {
-                            const newKey = columnRenameMap[key] || key;
-                            newRow[newKey] = row[key];
-                        }
-                    }
-
-                    return newRow;
-                });
-                console.log(processedData);
-                const myJson = {
-                  'observation':processedData
-                }
-                try{
-                  console.log('hey');
-                  console.log(parsedJson['observation']);
-                  parsedJson.observation = myJson.observation;
-                  console.log(parsedJson);
-  
-                jsonOutput.textContent = JSON.stringify(parsedJson,null,2)
-                }
-                catch(error){
-                    alert('json problem')
-                }
-            };
-            
-            reader.readAsArrayBuffer(file);
-
-
     }
+
+    const parsedJson = JSON.parse(jsonText);
+    console.log(parsedJson);
+    const newFile = document.getElementById('extra-file-input');
+
+    const file = newFile.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+
+        // Assuming the data is in the first sheet
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        // Convert the sheet to JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        const columnsToSkip = ['Sr. No.', 'Area'];
+        // Columns to rename
+        const columnRenameMap = { 'References (21CFR Part 11)': 'reference','Observations':'observation' };
+
+        // Process each row
+        const processedData = jsonData.map(row => {
+            // Add unique ID and make it the first field
+            const newRow = { id: uuid.v4() };
+
+            // Rename columns and remove specified columns
+            for (const key in row) {
+                if (!columnsToSkip.includes(key)) {
+                    const newKey = columnRenameMap[key] || key;
+                    newRow[newKey] = row[key];
+                }
+            }
+
+            return newRow;
+        });
+        console.log(processedData);
+        const myJson = {
+          'observation':processedData
+        }
+        try {
+            console.log('hey');
+            console.log(parsedJson['observation']);
+            parsedJson.observation = myJson.observation;
+            console.log(parsedJson);
+
+            jsonOutput.textContent = JSON.stringify(parsedJson, null, 2);
+            alert('Observation data has been changed');
+        }
+        catch (error) {
+            alert('json problem');
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
+}
 
     function download(){
       var jsonContent = document.getElementById('json-output').textContent;
