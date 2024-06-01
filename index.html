@@ -116,8 +116,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
   
   <script>
-
-    // console.log(additionalFile);
     // Call the function to run the JSON file
     // Initialize an object to store department IDs for each department name
     let departmentIds = {};
@@ -242,10 +240,6 @@
         jsonOutput.textContent = JSON.stringify(columnData, null, 2); // Change textContent to value
         document.getElementById('display-section').style.display = 'block';
   
-        // const jsonBlob = new Blob([JSON.stringify(columnData, null, 2)], { type: 'application/json' });
-        // const url = URL.createObjectURL(jsonBlob);
-        // downloadLink.href = url;
-        // downloadLink.download = 'data.json';
         downloadLink.style.display = 'block';
       };
   
@@ -259,69 +253,95 @@
     }
     
     function uploadExtraFile() {
-    const jsonOutput = document.getElementById('json-output');
-    const jsonText = jsonOutput.textContent;
-    if (!jsonText) {
-        alert('No JSON data available.');
-        return;
-    }
+  const jsonOutput = document.getElementById('json-output');
+  const jsonText = jsonOutput.textContent;
+  if (!jsonText) {
+    alert('No JSON data available.');
+    return;
+  }
 
-    const parsedJson = JSON.parse(jsonText);
-    console.log(parsedJson);
-    const newFile = document.getElementById('extra-file-input');
+  const parsedJson = JSON.parse(jsonText);
+  console.log(parsedJson);
+  const newFile = document.getElementById('extra-file-input');
 
-    const file = newFile.files[0];
-    const reader = new FileReader();
+  const file = newFile.files[0];
+  const reader = new FileReader();
 
-    reader.onload = function(event) {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, {type: 'array'});
+  reader.onload = function(event) {
+    const data = new Uint8Array(event.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
 
-        // Assuming the data is in the first sheet
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
 
-        // Convert the sheet to JSON
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        const columnsToSkip = ['Sr. No.', 'Area'];
-        // Columns to rename
-        const columnRenameMap = { 'References (21CFR Part 11)': 'reference','Observations':'observation' };
+    const columnsToSkip = ['Sr. No.', 'Area'];
+    const columnRenameMap = { 'References (21CFR Part 11)': 'reference', 'Observations': 'observation' };
 
-        // Process each row
-        const processedData = jsonData.map(row => {
-            // Add unique ID and make it the first field
-            const newRow = { id: uuid.v4() };
+    const processedData = jsonData.map(row => {
+      const newRow = { id: uuid.v4() };
+      let areaName = ''; // Initialize areaName variable
 
-            // Rename columns and remove specified columns
-            for (const key in row) {
-                if (!columnsToSkip.includes(key)) {
-                    const newKey = columnRenameMap[key] || key;
-                    newRow[newKey] = row[key];
-                }
-            }
-
-            return newRow;
-        });
-        console.log(processedData);
-        const myJson = {
-          'observation':processedData
+      for (const key in row) {
+        if (!columnsToSkip.includes(key)) {
+          const newKey = columnRenameMap[key] || key;
+          newRow[newKey] = row[key].trim(); // Strip whitespace from each field
+        } else if (key === 'Area') {
+          areaName = row[key].trim(); // Capture and strip whitespace from the area name
         }
-        try {
-            console.log('hey');
-            console.log(parsedJson['observation']);
-            parsedJson.observation = myJson.observation;
-            console.log(parsedJson);
+      }
 
-            jsonOutput.textContent = JSON.stringify(parsedJson, null, 2);
-            alert('Observation data has been changed');
-        }
-        catch (error) {
-            alert('json problem');
-        }
+      // Return newRow object without area_name
+      return { ...newRow, areaName };
+    });
+
+    // Map area names to their corresponding IDs, stripping whitespace from area names
+    const areaMap = parsedJson.areas.reduce((map, area) => {
+      map[area.area.trim()] = area.id; // Strip whitespace from area names
+      return map;
+    }, {});
+    console.log(areaMap);
+
+    // Construct the observationArray with observationId, obs, area_name, and areaId
+    const observationArray = processedData.map(row => ({
+      id: uuid.v4(),
+      observationId: row.id,
+      area_id: areaMap[row.areaName] || null,
+      obs: row.observation,
+      area_name: row.areaName, // Include area_name in areaObs
+       // Assign the areaId from areaMap
+    }));
+
+    const myJson = {
+      'observation': processedData.map(({ areaName, ...rest }) => rest), // Remove areaName from observation objects
     };
 
-    reader.readAsArrayBuffer(file);
+    try {
+      parsedJson.observation = myJson.observation;
+      parsedJson.areaObs = observationArray; // Add the new object array to parsedJson
+
+      // Create the obsRef array
+      const obsRefArray = parsedJson.observation.map(obs => {
+        const referenceObj = parsedJson.references.find(ref => ref.reference === obs.reference);
+        return {
+          id: uuid.v4(),
+          reference: obs.reference,
+          country: referenceObj ? referenceObj.country : null,
+          obsId: obs.id,
+          refId: referenceObj ? referenceObj.id : null
+        };
+      });
+
+      parsedJson.obsRef = obsRefArray; // Add the obsRef array to parsedJson
+
+      jsonOutput.textContent = JSON.stringify(parsedJson, null, 2);
+    } catch (error) {
+      alert('json problem');
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
 }
 
     function download(){
